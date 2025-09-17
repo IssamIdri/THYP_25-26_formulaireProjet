@@ -325,7 +325,7 @@ var dataPhoto, dataForm, dataFacet=[], dataDoublons={}
                         let urlParam = new URLSearchParams(url.search);
                         let id = urlParam.get('id');
                         //merci à https://stackoverflow.com/questions/50664868/get-pictures-from-google-drive-folder-with-javascript-to-my-website
-                        let urlTof = "https://drive.google.com/uc?id="+id+"&export=download";                        
+                        let urlTof = "https://drive.google.com/thumbnail?id="+id+"&sz=w1000";                     
                         return urlTof; 
                         });
             /*ATTENTION problème quand les images ne sont pas à la même taille
