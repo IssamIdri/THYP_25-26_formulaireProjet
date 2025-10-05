@@ -1,163 +1,23 @@
-/* ===== Layout & container ===== */
-.container{ max-width: 1100px; }
-
-/* ===== Toolbar ===== */
-.searchbar{
-  border-radius: 14px;
-  padding: .75rem 1rem;
-  margin: .5rem 0 1rem;
-  background: rgba(20,24,48,.55);
-  border: 1px solid rgba(255,255,255,.06);
-}
-.searchbar .form-control,
-.searchbar .form-select{
-  background: #111634;
-  color: #e8eaf6;
-  border: 1px solid #2a315e;
-  border-radius: 14px;
-}
-.searchbar .form-control::placeholder{ color:#8a91b8; }
-
-/* ===== Grid ===== */
-.grid{
-  display:grid;
-  grid-template-columns: repeat(auto-fill,minmax(320px,1fr));
-  gap: 1rem;
-}
-
-/* ===== Cards ===== */
-.card{
-  background: #151a3a;
-  border: 1px solid #2a315e;
-  border-radius: 18px;
-  box-shadow: 0 10px 24px rgba(0,0,0,.25);
-}
-.card-body{
-  padding: 14px 14px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: .35rem;
-}
-.card-title{
-  color:#f3f4ff;
-  font-weight: 800;
-  margin-bottom: .15rem !important;
-  line-height: 1.25;
-}
-
-/* ===== Text tones ===== */
-.muted{ color:#a4abd4 !important; }
-.card-text{ color:#dbe2ff; opacity:.95; margin-bottom:.25rem; }
-.card .muted.fw-semibold{
-  color:#c7cffb !important;
-  font-weight:700 !important;
-  margin:.25rem 0 .2rem !important;
-}
-
-/* ===== Pills (multi-valeurs) ===== */
-.pill{
-  display:inline-block;
-  max-width: 100%;
-  overflow-wrap: anywhere;
-  border-radius: 999px;
-  padding:.22rem .55rem;
-  font-size:.82rem;
-  background: linear-gradient(135deg,#22d3ee,#a78bfa);
-  color:#0b0f24;
-  margin:.18rem .22rem 0 0;
-}
-
-/* ===== Key:Value badges ===== */
-.kv-wrap{
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: .35rem;
-}
-.badge-kv{
-  display:flex;
-  align-items:center;
-  gap:.4rem;
-  background:#0f1430;
-  color:#e8eaf6;
-  border:1px solid #2a315e;
-  border-radius: 10px;
-  padding:.35rem .5rem;
-  font-size:.85rem;
-  line-height:1.2;
-  overflow-wrap:anywhere;
-}
-.badge-kv .key{ color:#bfc7ff; font-weight:700; }
-
-/* Long bloc (paragraphe) */
-.kv-block{
-  background:#10163a;
-  border:1px solid #2a315e;
-  border-radius: 12px;
-  padding:.5rem .6rem;
-  color:#e8eaf6;
-  line-height:1.35;
-}
-
-/* Small */
-#count{ color:#a4abd4; }
-
-/* Mobile */
-@media (max-width:480px){
-  .grid{ grid-template-columns: 1fr; }
-}
-/* === 1) élargir la grille & les cartes === */
-.container{ max-width: 1280px; }                    /* avant 1100px */
-.grid{
-  display:grid;
-  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));  /* avant 320/360 */
-  gap: 1.25rem;                                                  /* un peu plus d'air */
-}
-@media (min-width: 1500px){
-  .container{ max-width: 1400px; }                 /* large écrans, 3 cartes larges */
-  .grid{ gap: 1.5rem; }
-}
-.card-body{ padding: 16px 16px 14px; }
-
-/* === 2) rendre visibles les sections et leurs contenus === */
-/* titres de sections (Contenu & objectifs / Aspects techniques) */
-.card .muted.fw-semibold{
-  color: #e2e7ff !important;                       /* + clair */
-  font-weight: 800 !important;
-  letter-spacing: .2px;
-  margin: .35rem 0 .35rem !important;
-  display: inline-block;
-}
-
-/* lignes à l'intérieur des sections (label + valeur) */
-.card .mb-2 .key{
-  color: #c8cffc;                                  /* label + clair */
-  font-weight: 700;
-  margin-bottom: .15rem;
-  display: inline-block;
-}
-.card .mb-2 > div:last-child{
-  color: #eef1ff;                                  /* valeur + lisible */
-  line-height: 1.35;
-}
-
-/* paragraphes longs (kv-block) déjà prévus */
-.kv-block{
-  background:#10163a;
-  border:1px solid #2a315e;
-  border-radius: 12px;
-  padding:.55rem .7rem;
-  color:#eef1ff;
-  line-height:1.45;
-}
-
-/* pills & badges : taille/espacement un poil plus grands */
-.pill{
-  padding:.28rem .7rem;
-  font-size:.86rem;
-  margin:.2rem .28rem 0 0;
-}
-.badge-kv{
-  padding:.4rem .6rem;
-  font-size:.86rem;
-}
-.kv-wrap{ gap: .45rem; }
+body { background:#0f1425; color:#e8eaf6; }
+    .container { max-width: 1200px; }
+    .searchbar{
+      background:#151b34; border:1px solid #27305a; border-radius:14px;
+      padding:.75rem 1rem; margin: .75rem 0 1rem;
+    }
+    .searchbar .form-control, .searchbar .form-select{
+      background:#0f1430; color:#e8eaf6; border:1px solid #27305a; border-radius:12px;
+    }
+    .btn-primary{ border-radius:999px; font-weight:600; }
+    .table-responsive{ background:#0f1430; border:1px solid #27305a; border-radius:14px; padding:.5rem; }
+    table.table { color:#e8eaf6; }
+    table.table thead th{
+      position: sticky; top: 0; z-index: 2;
+      background:#12183a; color:#cbd5ff; border-bottom:2px solid #27305a;
+      white-space: nowrap;
+    }
+    table.table td, table.table th{ vertical-align: top; }
+    table.table td{
+      white-space: normal; word-break: break-word;
+    }
+    a { color:#9bd8ff; }
+    #count { color:#a4abd4; }

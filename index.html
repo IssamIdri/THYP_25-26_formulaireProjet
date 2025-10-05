@@ -15,21 +15,24 @@
 </head>
 <body>
   <div class="container py-4">
+
     <header class="mb-3">
-      <h1 class="h3 mb-1">Projets Hypermedia</h1>
+      <h1 class="h3 mb-1">Projets Hypermédias</h1>
+      <div class="text-muted">Source : Google Sheets (mise à jour automatique quand le formulaire reçoit des réponses)</div>
     </header>
-<div class="mb-4 text-end">
-  <a href="https://docs.google.com/forms/d/e/1FAIpQLSdiN480uyDaPTyZ0nF_PSbIRnjgqVKhmPHMDZewu864lXT0xg/viewform?usp=header" 
-     target="_blank" rel="noopener" 
-     class="btn btn-primary btn-lg">
-    ➕ Remplir le formulaire
-  </a>
-</div>
+
+    <!-- Lien vers le formulaire -->
+    <div class="mb-3 d-flex gap-2 justify-content-end">
+      <a href="https://docs.google.com/forms/d/e/1FAIpQLSdiN480uyDaPTyZ0nF_PSbIRnjgqVKhmPHMDZewu864lXT0xg/viewform?usp=header"
+         target="_blank" rel="noopener"
+         class="btn btn-primary btn-lg">➕ Remplir le formulaire</a>
+    </div>
+
     <!-- Barre outils -->
     <div class="searchbar">
       <div class="row g-2 align-items-center">
         <div class="col-12 col-md-6">
-          <input id="q" class="form-control form-control-lg" placeholder="Rechercher (titre, résumé, objectifs, techno…)" />
+          <input id="q" class="form-control form-control-lg" placeholder="Rechercher (plein texte)"/>
         </div>
         <div class="col-6 col-md-3">
           <select id="keySelect" class="form-select">
@@ -43,257 +46,105 @@
     </div>
 
     <!-- Résumé -->
-    <div class="mt-3 mb-2">
-      <span id="count" class="muted">Chargement…</span>
+    <div class="mt-2 mb-2"><span id="count">Chargement…</span></div>
+
+    <!-- Tableau -->
+    <div class="table-responsive">
+      <table id="dataTable" class="table table-sm table-striped table-hover align-middle mb-0">
+        <thead></thead>
+        <tbody></tbody>
+      </table>
     </div>
 
-    <!-- Grille cartes -->
-    <div id="grid" class="grid"></div>
-
-    
   </div>
 
   <script>
   (function(){
-    // === 1) CONFIG ===
+    // === CONFIG ===
     const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vREH0YrVGx0VyRdsIamPOa4NWriyGPgDFFbpRcR5vwRdVtaU8SV4TxhU6yHDYswrlwHh3BKp8BkxHyY/pub?output=csv";
 
-    // Indices/alias probables pour mieux titrer les cartes (si présents)
-    const TITLE_HINTS = [
-      "Titre du projet","Titre","Project title","Nom du projet"
-    ];
-    const SUMMARY_HINTS = [
-      "Résumé","Résumé du projet","Description","Pitch","Synthèse"
-    ];
+    // === STATE ===
+    let RAW = [], FILTERED = [], COLS = [];
 
-    // Groupes (affichage structuré si on reconnaît ces colonnes)
-    const GROUPS = {
-      "Contenu & objectifs": [
-        "Objectifs","Objectifs principaux du projet","Problématique","Problématique / besoin",
-        "Public cible","Audience","Cible"
-      ],
-      "Aspects techniques": [
-        "Technologies envisagées","Technologies","Type de médias intégrés","Médias",
-        "Fonctionnalités prévues","Fonctionnalités"
-      ],
-      "Références": [
-        "Liens utiles","Liens","URL","Références","Ressources prévues","Ressources"
-      ]
-    };
-
-    // === 2) ÉTAT ===
-    let RAW = [];
-    let FILTERED = [];
-    let ALL_KEYS = [];
-
-    // === 3) OUTILS ===
+    // === UTILS ===
     const norm = s => (s||"").toString().trim();
     const lc = s => norm(s).toLowerCase();
+    const deburr = s => lc(s).normalize('NFD').replace(/\p{Diacritic}/gu,'');
+    function isUrl(s){ return /^https?:\/\/|^www\./i.test(s||""); }
+    function escapeHtml(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
+    function linkify(s){ return isUrl(s) ? `<a href="${s}" target="_blank" rel="noopener">${escapeHtml(s)}</a>` : escapeHtml(s); }
 
-    function pickFirstKey(obj, hints){
-      for(const h of hints){
-        const k = Object.keys(obj).find(k => lc(k) === lc(h));
-        if(k) return k;
-      }
-      // fallback: rien trouvé
-      return null;
-    }
+    // === RENDER TABLE ===
+    function renderTable(rows){
+      const thead = d3.select("#dataTable thead");
+      const tbody = d3.select("#dataTable tbody");
+      thead.html(""); tbody.html("");
 
-    function splitMulti(val){
-      // Gère cases à cocher (souvent CSV = "A, B, C")
-      if(!val) return [];
-      // Sépare par ; ou , (selon paramétrage de Google Sheets)
-      return val.split(/[,;]\s*/).map(v => v.trim()).filter(Boolean);
-    }
+      // Header
+      const trh = thead.append("tr");
+      COLS.forEach(c => trh.append("th").text(c));
 
-    function buildCard(row){
-      // 1) Titre + résumé (si colonnes devinées)
-      const titleKey = pickFirstKey(row, TITLE_HINTS);
-      const sumKey   = pickFirstKey(row, SUMMARY_HINTS);
-      const title = norm(row[titleKey]) || "Projet sans titre";
-      const summary = norm(row[sumKey]) || "";
-
-      // 2) Préparer sections par groupe
-      const sections = [];
-
-      for(const [label, columns] of Object.entries(GROUPS)){
-        const present = columns
-          .map(colName => {
-            const k = Object.keys(row).find(k => lc(k) === lc(colName));
-            return k || null;
-          })
-          .filter(Boolean);
-
-        if(present.length){
-          const items = present.map(k => {
-            const v = norm(row[k]);
-            if(!v) return null;
-
-            // Affichage intelligent : si liste, présenter en "pills"
-            const parts = splitMulti(v);
-            if(parts.length > 1){
-              const pills = parts.map(x => `<span class="pill">${escapeHtml(x)}</span>`).join(" ");
-              return `<div class="mb-2"><div class="key">${escapeHtml(k)}</div><div>${pills}</div></div>`;
-            }
-            // URL auto-liées
-            if(isLikelyUrl(v)){
-              return `<div class="mb-2"><div class="key">${escapeHtml(k)}</div><div><a href="${escapeUrl(v)}" target="_blank" rel="noopener">${escapeHtml(v)}</a></div></div>`;
-            }
-            // Paragraphe simple
-            return `<div class="mb-2"><div class="key">${escapeHtml(k)}</div><div>${escapeHtml(v)}</div></div>`;
-          }).filter(Boolean);
-
-          if(items.length){
-            sections.push(`
-              <div class="mb-2">
-                <div class="muted fw-semibold mb-1">${label}</div>
-                ${items.join("")}
-              </div>
-            `);
-          }
-        }
-      }
-
-      // 3) Colonnes non classées (pour ne rien perdre)
-      const groupedKeys = new Set(
-        [].concat(...Object.values(GROUPS)).map(x => lc(x))
-      );
-      if(titleKey) groupedKeys.add(lc(titleKey));
-      if(sumKey) groupedKeys.add(lc(sumKey));
-
-      const misc = Object.keys(row)
-      .filter(k => lc(k) && !groupedKeys.has(lc(k)) && norm(row[k]))
-      .filter(k => lc(k) !== "timestamp" && lc(k) !== "horodatage")
-      .map(k => {
-        const v = norm(row[k]);
-        const isLong = v.length > 140 || v.split(/\s+/).length > 25; // heuristique “long”
-        const parts = splitMulti(v);
-
-        if (isLong) {
-          return `<div class="kv-block"><span class="key">${escapeHtml(k)} :</span> ${escapeHtml(v)}</div>`;
-        }
-        if (parts.length > 1) {
-          const pills = parts.map(x => `<span class="pill">${escapeHtml(x)}</span>`).join(" ");
-          return `<div class="badge-kv"><span class="key">${escapeHtml(k)} :</span> ${pills}</div>`;
-        }
-        if (isLikelyUrl(v)) {
-          return `<div class="badge-kv"><span class="key">${escapeHtml(k)} :</span> <a href="${escapeUrl(v)}" target="_blank" rel="noopener">${escapeHtml(v)}</a></div>`;
-        }
-        return `<div class="badge-kv"><span class="key">${escapeHtml(k)} :</span> ${escapeHtml(v)}</div>`;
+      // Body
+      const trs = tbody.selectAll("tr").data(rows).enter().append("tr");
+      trs.each(function(row){
+        const tr = d3.select(this);
+        COLS.forEach(c => {
+          const val = norm(row[c]);
+          tr.append("td").html(linkify(val));
+        });
       });
 
-
-      // 4) HTML carte
-      return `
-        <div class="card h-100">
-          <div class="card-body">
-            <h5 class="card-title mb-1">${escapeHtml(title)}</h5>
-            ${summary ? `<p class="card-text">${escapeHtml(summary)}</p>` : ``}
-            ${sections.join("")}
-            ${misc.length ? `<div class="kv-wrap mt-2">${misc.join("")}</div>` : ``}          </div>
-        </div>
-      `;
+      // Count
+      d3.select("#count").text(`${rows.length} ligne(s)`);
     }
 
-    function render(){
-      const grid = d3.select("#grid");
-      grid.html("");
-
-      if(!FILTERED.length){
-        d3.select("#count").text("Aucun résultat.");
-        return;
-      }
-
-      d3.select("#count").text(`${FILTERED.length} projet(s)`);
-
-      grid.selectAll(".col")
-        .data(FILTERED)
-        .enter()
-        .append("div")
-        .attr("class","col")
-        .html(d => buildCard(d));
-    }
-
-    function isLikelyUrl(s){
-      return /^https?:\/\/|^www\./i.test(s);
-    }
-
-    function escapeHtml(s){
-      return s
-        .replace(/&/g,"&amp;")
-        .replace(/</g,"&lt;")
-        .replace(/>/g,"&gt;")
-        .replace(/"/g,"&quot;")
-        .replace(/'/g,"&#39;");
-    }
-
-    function escapeUrl(s){
-      try { return new URL(s).toString(); }
-      catch { return s; }
-    }
-
-    function searchFilter(q, key){
-      const qlc = lc(q);
-      return RAW.filter(row => {
-        // Filtre par colonne spécifique si choisi
-        if(key){
-          const val = row[key] ?? "";
-          return lc(val).includes(qlc);
-        }
-        // Sinon, recherche plein texte sur toutes les colonnes
-        return Object.values(row).some(v => lc(v).includes(qlc));
-      });
-    }
-
+    // === FILTERS ===
     function populateKeySelect(){
       const sel = document.getElementById("keySelect");
       sel.innerHTML = `<option value="">— Filtrer par colonne —</option>`;
-      ALL_KEYS.forEach(k => {
+      COLS.forEach(k => {
         const opt = document.createElement("option");
-        opt.value = k;
-        opt.textContent = k;
-        sel.appendChild(opt);
+        opt.value = k; opt.textContent = k; sel.appendChild(opt);
       });
     }
 
-    // === 4) INIT ===
+    function applyFilters(){
+      const q = document.getElementById("q").value || "";
+      const key = document.getElementById("keySelect").value || "";
+      const qn = deburr(q);
+
+      FILTERED = RAW.filter(row => {
+        if(key){ return deburr(row[key] || "").includes(qn); }
+        return COLS.some(c => deburr(row[c] || "").includes(qn));
+      });
+      renderTable(FILTERED);
+    }
+
+    // === INIT ===
     document.getElementById("downloadCsv").href = CSV_URL;
 
     d3.csv(CSV_URL).then(rows => {
+      // Nettoyage
       RAW = rows.map(r => {
-        // Trim de toutes les valeurs
         const o = {};
         Object.keys(r).forEach(k => { o[k.trim()] = (r[k] ?? "").toString().trim(); });
         return o;
       });
 
-      // Collecte des clés (colonnes)
-      const keySet = new Set();
-      RAW.forEach(r => Object.keys(r).forEach(k => keySet.add(k)));
-      ALL_KEYS = Array.from(keySet);
-
+      // Colonnes (dans l'ordre du CSV)
+      COLS = RAW.length ? Object.keys(RAW[0]) : [];
       populateKeySelect();
 
       FILTERED = RAW.slice();
-      render();
+      renderTable(FILTERED);
+
+      // Listeners
+      document.getElementById("q").addEventListener("input", applyFilters);
+      document.getElementById("keySelect").addEventListener("change", applyFilters);
     }).catch(err => {
       console.error(err);
-      d3.select("#count").text("Erreur de chargement du CSV. Vérifie que la feuille est bien publiée en CSV.");
+      d3.select("#count").text("Erreur de chargement du CSV. Vérifie la publication de la feuille.");
     });
-
-    // === 5) ÉCOUTEURS ===
-    const qInput = document.getElementById("q");
-    const keySel = document.getElementById("keySelect");
-
-    function applyFilters(){
-      const q = qInput.value || "";
-      const key = keySel.value || "";
-      FILTERED = searchFilter(q, key);
-      render();
-    }
-
-    qInput.addEventListener("input", applyFilters);
-    keySel.addEventListener("change", applyFilters);
   })();
   </script>
 </body>
